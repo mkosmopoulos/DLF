@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="el"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Drakopoulos Time">
+<meta name="theme-color" content="#ffffff">
+<title>Drakopoulos Timekeeper</title>
+<script src="Drakopoulos%20Timekeeper_files/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&family=Cormorant+Garamond:wght@400;500&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f5f3; --header-bg: #1a1a1a;
+    --surface: #ffffff;
+    --border: #ddddd8;
+    --border2: #e8e8e4;
+    --text: #1a1a1a;
+    --muted: #888884;
+    --accent: #1a1a1a;
+    --accent2: #4a4a4a;
+    --red: #c0392b;
+    --green: #2c6e49;
+    --mono: 'Montserrat', sans-serif;
+  }
+  html, body { background: var(--bg); color: var(--text); font-family: var(--mono); height: 100%; overflow: hidden; font-size: 13px; }
+  #app { display: flex; flex-direction: column; height: 100dvh; max-width: 480px; margin: 0 auto; background: var(--bg); }
+
+  /* Header */
+  .header { background: #1a1a1a; border-bottom: none; padding: 14px 20px 10px; flex-shrink: 0; }
+  .logo-text-mark { font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 400; letter-spacing: 0.35em; color: #ffffff; margin-bottom: 5px; text-transform: uppercase; }
+  .header-sub { font-size: 9px; color: #666; letter-spacing: 0.15em; text-transform: uppercase; display: flex; align-items: center; gap: 10px; }
+  .header-total { color: #aaa; font-weight: 600; }
+
+  /* Nav */
+  .nav { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .nav-btn { flex: 1; padding: 10px 0; border: none; background: transparent; color: var(--muted); font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 500; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; -webkit-tap-highlight-color: transparent; }
+  .nav-btn.active { color: var(--text); border-bottom-color: var(--text); }
+
+  /* Content */
+  .content { flex: 1; overflow-y: auto; padding: 0 0 80px; -webkit-overflow-scrolling: touch; }
+  .content::-webkit-scrollbar { width: 3px; }
+  .content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* Clock */
+  .clock-box { text-align: center; padding: 22px 0 16px; background: var(--surface); border-bottom: 1px solid var(--border); margin-bottom: 0; transition: background 0.3s; }
+  .clock-box.running { background: #1a1a1a; }
+  .clock-display { font-size: clamp(40px, 13vw, 56px); font-weight: 300; letter-spacing: 0.08em; color: var(--text); line-height: 1; margin-bottom: 4px; transition: color 0.3s; font-family: 'Cormorant Garamond', serif; }
+  .clock-box.running .clock-display { color: #ffffff; }
+  .clock-status { font-size: 9px; color: var(--muted); letter-spacing: 0.2em; text-transform: uppercase; height: 12px; transition: color 0.3s; }
+  .clock-box.running .clock-status { color: #888; }
+
+  /* Form */
+  .form-body { padding: 0 16px; }
+  .field { padding: 11px 0; border-bottom: 1px solid var(--border2); }
+  .field:last-of-type { border-bottom: none; }
+  .field-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; font-weight: 500; margin-bottom: 5px; }
+  input[type=text], input[type=date], input[type=number], select, textarea {
+    width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--border);
+    padding: 6px 2px; color: var(--text); font-family: var(--mono); font-size: 13px;
+    outline: none; -webkit-appearance: none; border-radius: 0;
+    transition: border-color 0.15s;
+  }
+  input:focus, select:focus, textarea:focus { border-bottom-color: var(--text); }
+  input::placeholder, textarea::placeholder { color: var(--border); }
+  select { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E") no-repeat right 4px center; padding-right: 20px; }
+  select option { background: #fff; color: #1a1a1a; }
+  textarea { resize: none; height: 64px; border: 1px solid var(--border); padding: 8px; border-radius: 2px; margin-top: 2px; font-size: 12px; }
+  textarea:focus { border-color: var(--text); }
+  input[type=date]::-webkit-calendar-picker-indicator { opacity: 0.4; }
+
+  /* Radio */
+  .radio-group { display: flex; gap: 20px; padding: 4px 0; }
+  .radio-opt { display: flex; align-items: center; gap: 7px; cursor: pointer; font-size: 12px; color: var(--muted); -webkit-tap-highlight-color: transparent; letter-spacing: 0.03em; }
+  .radio-dot { width: 15px; height: 15px; border-radius: 50%; border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: border-color 0.15s; }
+  .radio-opt.active .radio-dot { border-color: var(--text); }
+  .radio-dot::after { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--text); display: none; }
+  .radio-opt.active .radio-dot::after { display: block; }
+  .radio-opt.active { color: var(--text); }
+
+  /* Controls */
+  .controls { display: flex; gap: 8px; padding: 16px; background: var(--surface); border-top: 1px solid var(--border); position: sticky; bottom: 0; }
+  .btn { flex: 1; padding: 12px; border: 1.5px solid var(--text); border-radius: 0; font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; transition: all 0.15s; -webkit-tap-highlight-color: transparent; background: transparent; color: var(--text); }
+  .btn:active { opacity: 0.7; }
+  .btn-start { background: var(--text); color: #fff; border-color: var(--text); }
+  .btn-pause { background: #fff; color: var(--text); border-color: var(--text); }
+  .btn-save { background: var(--green); color: #fff; border-color: var(--green); }
+  .btn-reset { flex: 0; padding: 12px 14px; border-color: var(--border); color: var(--muted); }
+
+  /* Log */
+  .group-header { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.15em; padding: 14px 16px 6px; display: flex; justify-content: space-between; border-bottom: 1px solid var(--border2); }
+  .entry { display: flex; align-items: center; gap: 10px; padding: 11px 16px; background: var(--surface); border-bottom: 1px solid var(--border2); }
+  .entry-body { flex: 1; min-width: 0; }
+  .entry-main { font-size: 12px; color: var(--text); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+  .entry-sub { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .entry-dur { font-size: 13px; color: var(--accent2); white-space: nowrap; flex-shrink: 0; font-weight: 500; }
+  .del-btn { background: none; border: none; color: #ccc; font-size: 18px; cursor: pointer; padding: 4px; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
+  .del-btn:active { color: var(--red); }
+
+  .log-total { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: var(--surface); border-top: 2px solid var(--text); margin-top: 8px; }
+  .log-total-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+  .log-total-val { font-size: 18px; font-weight: 300; color: var(--text); font-family: 'Cormorant Garamond', serif; }
+
+  .export-btn { width: calc(100% - 32px); margin: 10px 16px; padding: 11px; background: transparent; color: var(--muted); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .export-btn:active { background: var(--border2); }
+
+  /* Summary */
+  .sum-section { background: var(--surface); border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+  .sum-title { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.15em; padding: 12px 16px 6px; border-bottom: 1px solid var(--border2); }
+  .sum-row { display: flex; justify-content: space-between; padding: 9px 16px; border-bottom: 1px solid var(--border2); font-size: 11px; }
+  .sum-row:last-child { border-bottom: none; }
+  .sum-key { color: var(--accent2); }
+  .sum-val { color: var(--text); font-weight: 500; }
+
+  .total-band { background: var(--text); color: #fff; padding: 20px 16px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+  .total-band-label { font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; opacity: 0.6; }
+  .total-band-val { font-size: 36px; font-weight: 300; font-family: 'Cormorant Garamond', serif; }
+
+  .billable-box { background: var(--surface); border-top: 1px solid var(--border); padding: 14px 16px; }
+  .bill-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+  .bill-total { font-size: 20px; color: var(--text); font-weight: 300; font-family: 'Cormorant Garamond', serif; }
+
+  .empty { text-align: center; padding: 60px 0; color: var(--border); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="logo-text-mark">D R A K O P O U L O S</div>
+    <div class="header-sub">
+      <span id="header-date">Δευτέρα 1 Ιουνίου</span>
+      <span class="header-total" id="header-total"></span>
+    </div>
+  </div>
+  <div class="nav">
+    <button class="nav-btn active" onclick="switchView('timer')" id="nav-timer">Καταχώρηση</button>
+    <button class="nav-btn" onclick="switchView('log')" id="nav-log">Λίστα</button>
+    <button class="nav-btn" onclick="switchView('summary')" id="nav-summary">Σύνοψη</button>
+  </div>
+  <div class="content" id="content">
+    <div class="clock-box ">
+      <div class="clock-display" id="clock">00:00:00</div>
+      <div class="clock-status"></div>
+    </div>
+    <div class="form-body">
+      <div class="field"><div class="field-label">Δικηγόρος</div><select id="f-lawyer" onchange="fLawyer=this.value"><option value="ΔΡΑΚΟΠΟΥΛΟΣ ΠΑΝΑΓΙΩΤΗΣ">ΔΡΑΚΟΠΟΥΛΟΣ ΠΑΝΑΓΙΩΤΗΣ</option><option value="ΚΟΣΜΟΠΟΥΛΟΣ ΜΙΧΑΛΗΣ" selected="selected">ΚΟΣΜΟΠΟΥΛΟΣ ΜΙΧΑΛΗΣ</option><option value="ΛΑΛΑΟΥΝΗ ΜΙΚΑ">ΛΑΛΑΟΥΝΗ ΜΙΚΑ</option><option value="ΑΝΑΓΝΩΣΤΟΠΟΥΛΟΣ ΓΙΑΝΝΗΣ">ΑΝΑΓΝΩΣΤΟΠΟΥΛΟΣ ΓΙΑΝΝΗΣ</option><option value="ΦΡΑΓΚΙΣΚΟΣ ΠΕΤΡΟΣ">ΦΡΑΓΚΙΣΚΟΣ ΠΕΤΡΟΣ</option><option value="ΝΙΚΟΛΑΚΟΠΟΥΛΟΣ ΚΩΣΤΑΣ">ΝΙΚΟΛΑΚΟΠΟΥΛΟΣ ΚΩΣΤΑΣ</option></select></div>
+      <div class="field"><div class="field-label">Πελάτης</div><input type="text" id="f-client" placeholder="Όνομα πελάτη" oninput="fClient=this.value"></div>
+      <div class="field"><div class="field-label">Υπόθεση</div><input type="text" id="f-case" placeholder="Αριθμός / τίτλος υπόθεσης" oninput="fCase=this.value"></div>
+      <div class="field"><div class="field-label">Τύπος</div>
+        <div class="radio-group">
+          <label class="radio-opt active" onclick="fType='Δικαστική';document.querySelectorAll('.radio-opt').forEach((el,i)=>el.classList.toggle('active',i===0))">
+            <span class="radio-dot"></span>Δικαστική</label>
+          <label class="radio-opt " onclick="fType='Συμβουλευτική';document.querySelectorAll('.radio-opt').forEach((el,i)=>el.classList.toggle('active',i===1))">
+            <span class="radio-dot"></span>Συμβουλευτική</label>
+        </div>
+      </div>
+      <div class="field"><div class="field-label">Ημερομηνία</div><input type="date" id="f-date" value="2026-06-01" onchange="fDate=this.value"></div>
+      <div class="field"><div class="field-label">Pillar</div><select id="f-pillar" onchange="onPillarChange()"><option value="" selected="selected">— Επιλογή Pillar —</option><option value="CORPORATE">CORPORATE</option><option value="CROSS-BORDER">CROSS-BORDER</option><option value="DISPUTE RESOLUTION">DISPUTE RESOLUTION</option><option value="IP">IP</option><option value="PRIVATE CLIENTS">PRIVATE CLIENTS</option><option value="REAL ESTATE">REAL ESTATE</option><option value="REGULATORY">REGULATORY</option><option value="TECHNOLOGY">TECHNOLOGY</option></select></div>
+      <div class="field"><div class="field-label">Practice Area</div><select id="f-pa" onchange="onPAChange()"><option value="" selected="selected">— Επιλογή Practice Area —</option><option value="ADMINISTRATIVE - PP">ADMINISTRATIVE - PP</option><option value="ANTICOUNTERFEITING">ANTICOUNTERFEITING</option><option value="BANKING &amp; FINANCE">BANKING &amp; FINANCE</option><option value="CORPORATE &amp; COMMERCIAL">CORPORATE &amp; COMMERCIAL</option><option value="CROSS-BORDER">CROSS-BORDER</option><option value="DISPUTE RESOLUTION">DISPUTE RESOLUTION</option><option value="EMPLOYMENT">EMPLOYMENT</option><option value="GDPR">GDPR</option><option value="IMMIGRATION">IMMIGRATION</option><option value="IP">IP</option><option value="M&amp;A">M&amp;A</option><option value="PRIVATE CLIENTS">PRIVATE CLIENTS</option><option value="REAL ESTATE">REAL ESTATE</option><option value="REAL ESTATE PORTFOLIOS">REAL ESTATE PORTFOLIOS</option><option value="REGULATORY">REGULATORY</option><option value="TECHNOLOGY">TECHNOLOGY</option></select></div>
+      <div class="field"><div class="field-label">Κατηγορία</div><select id="f-category" onchange="fCategory=this.value"><option value="" selected="selected">— Επιλογή —</option><option value="ATTEND">ATTEND</option><option value="CASE STUDY">CASE STUDY</option><option value="CERTIFY">CERTIFY</option><option value="COMMUNICATION">COMMUNICATION</option><option value="COORDINATE">COORDINATE</option><option value="DRAFT">DRAFT</option><option value="FILE">FILE</option><option value="INVESTIGATION FOR COUNTERFEITS">INVESTIGATION FOR COUNTERFEITS</option><option value="MEETING">MEETING</option><option value="PREPARE">PREPARE</option><option value="REVIEW">REVIEW</option><option value="SEND">SEND</option><option value="TRANSLATE">TRANSLATE</option><option value="TRIP TO">TRIP TO</option><option value="VISIT">VISIT</option><option value="ΑΠΟΦΑΣΗ">ΑΠΟΦΑΣΗ</option><option value="ΔΙΚΑΣΙΜΟΣ">ΔΙΚΑΣΙΜΟΣ</option><option value="ΕΠΙΔΟΣΗ ΕΓΓΡΑΦΟΥ">ΕΠΙΔΟΣΗ ΕΓΓΡΑΦΟΥ</option><option value="ΕΠΙΚΟΙΝΩΝΙΑ">ΕΠΙΚΟΙΝΩΝΙΑ</option><option value="ΕΠΙΚΥΡΩΣΗ">ΕΠΙΚΥΡΩΣΗ</option><option value="ΕΠΙΜΕΛΕΙΑ">ΕΠΙΜΕΛΕΙΑ</option><option value="ΕΡΕΥΝΑ ΣΕ ΚΤΗΜΑΤΟΛΟΓΙΚΟ ΓΡΑΦΕΙΟ">ΕΡΕΥΝΑ ΣΕ ΚΤΗΜΑΤΟΛΟΓΙΚΟ ΓΡΑΦΕΙΟ</option><option value="ΕΡΕΥΝΑ ΣΕ ΥΠΟΘΗΚΟΦΥΛΑΚΕΙΟ">ΕΡΕΥΝΑ ΣΕ ΥΠΟΘΗΚΟΦΥΛΑΚΕΙΟ</option><option value="ΚΑΘΑΡΟΓΡΑΦΗ ΑΠΟΦΑΣΗΣ">ΚΑΘΑΡΟΓΡΑΦΗ ΑΠΟΦΑΣΗΣ</option><option value="ΚΑΤΑΘΕΣΗ">ΚΑΤΑΘΕΣΗ</option><option value="ΚΑΤΑΘΕΣΗ ΕΓΓΡΑΦΟΥ">ΚΑΤΑΘΕΣΗ ΕΓΓΡΑΦΟΥ</option><option value="ΚΑΤΑΘΕΣΗ ΕΓΓΡΑΦΩΝ - ΠΡΑΞΕΙΣ ΣΕ ΚΤΗΜΑΤΟΛΟΓΙΚΟ ΓΡΑΦΕΙΟ">ΚΑΤΑΘΕΣΗ ΕΓΓΡΑΦΩΝ - ΠΡΑΞΕΙΣ ΣΕ ΚΤΗΜΑΤΟΛΟΓΙΚΟ ΓΡΑΦΕΙΟ</option><option value="ΚΑΤΑΘΕΣΗ ΦΑΚΕΛΟΥ ΣΕ ΓΡΑΦΕΙΟ ΚΤΗΜΑΤΟΓΡΑΦΗΣΗΣ">ΚΑΤΑΘΕΣΗ ΦΑΚΕΛΟΥ ΣΕ ΓΡΑΦΕΙΟ ΚΤΗΜΑΤΟΓΡΑΦΗΣΗΣ</option><option value="ΜΕΛΕΤΗ ΥΠΟΘΕΣΗΣ">ΜΕΛΕΤΗ ΥΠΟΘΕΣΗΣ</option><option value="ΜΕΤΑΓΡΑΦΗ ΠΡΑΞΕΩΝ ΣΕ ΥΠΟΘΗΚΟΦΥΛΑΚΕΙΟ">ΜΕΤΑΓΡΑΦΗ ΠΡΑΞΕΩΝ ΣΕ ΥΠΟΘΗΚΟΦΥΛΑΚΕΙΟ</option><option value="ΜΕΤΑΦΡΑΣΗ">ΜΕΤΑΦΡΑΣΗ</option><option value="ΠΑΡΑΛΑΒΗ">ΠΑΡΑΛΑΒΗ</option><option value="ΠΑΡΑΛΑΒΗ ΕΓΓΡΑΦΟΥ">ΠΑΡΑΛΑΒΗ ΕΓΓΡΑΦΟΥ</option><option value="ΠΑΡΑΛΑΒΗ ΕΚΘΕΣΗΣ ΕΠΙΔΟΣΗΣ">ΠΑΡΑΛΑΒΗ ΕΚΘΕΣΗΣ ΕΠΙΔΟΣΗΣ</option><option value="ΠΑΡΑΣΤΑΣΗ">ΠΑΡΑΣΤΑΣΗ</option><option value="ΠΑΡΑΣΤΑΣΗ ΣΕ ΣΥΜΒΟΛΑΙΟΓΡΑΦΟ">ΠΑΡΑΣΤΑΣΗ ΣΕ ΣΥΜΒΟΛΑΙΟΓΡΑΦΟ</option><option value="ΠΑΡΑΣΤΑΣΗ ΣΤΟ ΔΙΚΑΣΤΗΡΙΟ">ΠΑΡΑΣΤΑΣΗ ΣΤΟ ΔΙΚΑΣΤΗΡΙΟ</option><option value="ΠΟΡΕΙΑ ΜΗΝΥΣΗΣ">ΠΟΡΕΙΑ ΜΗΝΥΣΗΣ</option><option value="ΠΡΟΕΤΟΙΜΑΣΙΑ">ΠΡΟΕΤΟΙΜΑΣΙΑ</option><option value="ΣΥΝΑΝΤΗΣΗ">ΣΥΝΑΝΤΗΣΗ</option><option value="ΣΥΝΤΑΞΗ ΕΓΓΡΑΦΟΥ">ΣΥΝΤΑΞΗ ΕΓΓΡΑΦΟΥ</option></select></div>
+      <div class="field"><div class="field-label">Περιγραφή</div><textarea id="f-desc" placeholder="Περιγραφή εργασίας..."></textarea></div>
+    </div>
+    <div class="controls">
+      <button class="btn btn-start" id="timer-btn" onclick="toggleTimer()">▶ Έναρξη</button>
+      <button class="btn btn-save" id="save-btn" onclick="saveEntry()" style="display:none">✓ Αποθήκευση</button>
+      <button class="btn btn-reset" id="reset-btn" onclick="resetTimer()" style="display:none">✕</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const LAWYERS = [
+  'ΔΡΑΚΟΠΟΥΛΟΣ ΠΑΝΑΓΙΩΤΗΣ','ΚΟΣΜΟΠΟΥΛΟΣ ΜΙΧΑΛΗΣ','ΛΑΛΑΟΥΝΗ ΜΙΚΑ',
+  'ΑΝΑΓΝΩΣΤΟΠΟΥΛΟΣ ΓΙΑΝΝΗΣ','ΦΡΑΓΚΙΣΚΟΣ ΠΕΤΡΟΣ','ΝΙΚΟΛΑΚΟΠΟΥΛΟΣ ΚΩΣΤΑΣ',
+];
+const CATEGORIES = [
+  'ATTEND','CASE STUDY','CERTIFY','COMMUNICATION','COORDINATE','DRAFT','FILE',
+  'INVESTIGATION FOR COUNTERFEITS','MEETING','PREPARE','REVIEW','SEND','TRANSLATE',
+  'TRIP TO','VISIT',
+  'ΑΠΟΦΑΣΗ','ΔΙΚΑΣΙΜΟΣ','ΕΠΙΔΟΣΗ ΕΓΓΡΑΦΟΥ','ΕΠΙΚΟΙΝΩΝΙΑ','ΕΠΙΚΥΡΩΣΗ','ΕΠΙΜΕΛΕΙΑ',
+  'ΕΡΕΥΝΑ ΣΕ ΚΤΗΜΑΤΟΛΟΓΙΚΟ ΓΡΑΦΕΙΟ','ΕΡΕΥΝΑ ΣΕ ΥΠΟΘΗΚΟΦΥΛΑΚΕΙΟ',
+  'ΚΑΘΑΡΟΓΡΑΦΗ ΑΠΟΦΑΣΗΣ','ΚΑΤΑΘΕΣΗ','ΚΑΤΑΘΕΣΗ ΕΓΓΡΑΦΟΥ',
+  'ΚΑΤΑΘΕΣΗ ΕΓΓΡΑΦΩΝ - ΠΡΑΞΕΙΣ ΣΕ ΚΤΗΜΑΤΟΛΟΓΙΚΟ ΓΡΑΦΕΙΟ',
+  'ΚΑΤΑΘΕΣΗ ΦΑΚΕΛΟΥ ΣΕ ΓΡΑΦΕΙΟ ΚΤΗΜΑΤΟΓΡΑΦΗΣΗΣ',
+  'ΜΕΛΕΤΗ ΥΠΟΘΕΣΗΣ','ΜΕΤΑΓΡΑΦΗ ΠΡΑΞΕΩΝ ΣΕ ΥΠΟΘΗΚΟΦΥΛΑΚΕΙΟ','ΜΕΤΑΦΡΑΣΗ',
+  'ΠΑΡΑΛΑΒΗ','ΠΑΡΑΛΑΒΗ ΕΓΓΡΑΦΟΥ','ΠΑΡΑΛΑΒΗ ΕΚΘΕΣΗΣ ΕΠΙΔΟΣΗΣ',
+  'ΠΑΡΑΣΤΑΣΗ','ΠΑΡΑΣΤΑΣΗ ΣΕ ΣΥΜΒΟΛΑΙΟΓΡΑΦΟ','ΠΑΡΑΣΤΑΣΗ ΣΤΟ ΔΙΚΑΣΤΗΡΙΟ',
+  'ΠΟΡΕΙΑ ΜΗΝΥΣΗΣ','ΠΡΟΕΤΟΙΜΑΣΙΑ','ΣΥΝΑΝΤΗΣΗ','ΣΥΝΤΑΞΗ ΕΓΓΡΑΦΟΥ',
+];
+const PILLARS = {
+  'CORPORATE': ['CORPORATE & COMMERCIAL','EMPLOYMENT','BANKING & FINANCE','M&A'],
+  'DISPUTE RESOLUTION': ['DISPUTE RESOLUTION'],
+  'IP': ['IP','ANTICOUNTERFEITING'],
+  'REAL ESTATE': ['REAL ESTATE','REAL ESTATE PORTFOLIOS'],
+  'REGULATORY': ['IMMIGRATION','GDPR','REGULATORY','ADMINISTRATIVE - PP'],
+  'TECHNOLOGY': ['TECHNOLOGY'],
+  'PRIVATE CLIENTS': ['PRIVATE CLIENTS'],
+  'CROSS-BORDER': ['CROSS-BORDER'],
+};
+const PA_TO_PILLAR = {};
+Object.entries(PILLARS).forEach(([p,areas]) => areas.forEach(a => PA_TO_PILLAR[a]=p));
+const ALL_PRACTICE_AREAS = Object.keys(PA_TO_PILLAR).sort();
+const ALL_PILLARS = Object.keys(PILLARS).sort();
+
+let entries = [];
+let running = false, elapsed = 0, timerInterval = null, startRef = 0;
+let currentView = 'timer', billRate = '150';
+let fLawyer='ΚΟΣΜΟΠΟΥΛΟΣ ΜΙΧΑΛΗΣ',fClient='',fCase='',fType='Δικαστική';
+let fDate=todayStr(),fCategory='',fPillar='',fPracticeArea='',fDescription='';
+
+function loadData(){try{const s=localStorage.getItem('drako_v1');if(s)entries=JSON.parse(s);}catch(e){}}
+function saveData(){localStorage.setItem('drako_v1',JSON.stringify(entries));}
+function fmt(s){return `${pad(Math.floor(s/3600))}:${pad(Math.floor((s%3600)/60))}:${pad(s%60)}`;}
+function pad(n){return String(n).padStart(2,'0');}
+function fmtDur(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60);if(h===0)return `${m}m`;if(m===0)return `${h}h`;return `${h}h ${m}m`;}
+function totalSecs(){return entries.reduce((a,e)=>a+e.seconds,0);}
+function todayStr(){return new Date().toISOString().slice(0,10);}
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function startTimer(){startRef=Date.now()-elapsed*1000;timerInterval=setInterval(()=>{elapsed=Math.floor((Date.now()-startRef)/1000);const el=document.getElementById('clock');if(el)el.textContent=fmt(elapsed);},500);}
+function stopTimer(){clearInterval(timerInterval);timerInterval=null;}
+
+function toggleTimer(){
+  running=!running;
+  if(running)startTimer();else stopTimer();
+  const box=document.querySelector('.clock-box');
+  const btn=document.getElementById('timer-btn');
+  const status=document.querySelector('.clock-status');
+  if(box)box.classList.toggle('running',running);
+  if(btn){btn.className=`btn ${running?'btn-pause':'btn-start'}`;btn.textContent=running?'⏸ Παύση':elapsed>0?'▶ Συνέχεια':'▶ Έναρξη';}
+  if(status)status.textContent=running?'● καταγραφή ώρας':'';
+  const s=document.getElementById('save-btn'),r=document.getElementById('reset-btn');
+  if(s)s.style.display=(!running&&elapsed>0)?'':`none`;
+  if(r)r.style.display=elapsed>0?'':`none`;
+}
+
+function saveEntry(){
+  syncFields();
+  entries.unshift({id:Date.now(),lawyer:fLawyer,client:fClient,case:fCase,type:fType,
+    date:fDate,pillar:fPillar,practiceArea:fPracticeArea,category:fCategory,
+    description:fDescription,seconds:elapsed,
+    time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})});
+  saveData();
+  elapsed=0;running=false;stopTimer();
+  fClient='';fCase='';fCategory='';fPillar='';fPracticeArea='';fDescription='';
+  render();
+}
+
+function syncFields(){
+  const g=id=>{const el=document.getElementById(id);return el?el.value:'';};
+  fLawyer=g('f-lawyer');fClient=g('f-client');fCase=g('f-case');
+  fDate=g('f-date');fPillar=g('f-pillar');fPracticeArea=g('f-pa');
+  fCategory=g('f-category');fDescription=g('f-desc');
+}
+
+function resetTimer(){elapsed=0;running=false;stopTimer();render();}
+function deleteEntry(id){entries=entries.filter(e=>e.id!==id);saveData();render();}
+
+function onPillarChange(){
+  const p=document.getElementById('f-pillar').value;fPillar=p;
+  const pa=document.getElementById('f-pa');
+  const areas=p?PILLARS[p]||[]:ALL_PRACTICE_AREAS;
+  pa.innerHTML=`<option value="">— Επιλογή —</option>`+areas.map(a=>`<option value="${esc(a)}">${esc(a)}</option>`).join('');
+  fPracticeArea='';
+}
+function onPAChange(){
+  const a=document.getElementById('f-pa').value;fPracticeArea=a;
+  if(a&&PA_TO_PILLAR[a]){fPillar=PA_TO_PILLAR[a];document.getElementById('f-pillar').value=fPillar;}
+}
+
+function exportXLSX(){
+  if(!entries.length)return;
+  const wb=XLSX.utils.book_new();
+  const rows=[['Ημερομηνία','Ώρα','Δικηγόρος','Πελάτης','Υπόθεση','Τύπος','Pillar','Practice Area','Κατηγορία','Ώρες','Λεπτά','Διάρκεια','Περιγραφή']];
+  entries.forEach(e=>rows.push([e.date||todayStr(),e.time,e.lawyer||'',e.client||'',e.case||'',e.type||'',e.pillar||'',e.practiceArea||'',e.category||''
+    ,+(e.seconds/3600).toFixed(2),Math.round(e.seconds/60),fmtDur(e.seconds),e.description||'']));
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:12},{wch:7},{wch:24},{wch:20},{wch:20},{wch:14},{wch:18},{wch:26},{wch:22},{wch:7},{wch:7},{wch:10},{wch:30}];
+  XLSX.utils.book_append_sheet(wb,ws,'Time Log');
+  const mk=(map,cols)=>{const ws=XLSX.utils.aoa_to_sheet([cols,...Object.entries(map).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,+(v/3600).toFixed(2)])]);ws['!cols']=cols.map((_,i)=>({wch:i===0?26:10}));return ws;};
+  const bL={},bC={},bPA={},bPi={};
+  entries.forEach(e=>{
+    [[ bL,e.lawyer||'—'],[bC,e.client||'—'],[bPA,e.practiceArea||'—'],[bPi,e.pillar||'—']].forEach(([m,k])=>m[k]=(m[k]||0)+e.seconds);
+  });
+  XLSX.utils.book_append_sheet(wb,mk(bL,['Δικηγόρος','Ώρες']),'Ανά Δικηγόρο');
+  XLSX.utils.book_append_sheet(wb,mk(bC,['Πελάτης','Ώρες']),'Ανά Πελάτη');
+  XLSX.utils.book_append_sheet(wb,mk(bPi,['Pillar','Ώρες']),'Ανά Pillar');
+  XLSX.utils.book_append_sheet(wb,mk(bPA,['Practice Area','Ώρες']),'Ανά Practice Area');
+  XLSX.writeFile(wb,`drakopoulos_timesheet_${todayStr()}.xlsx`);
+}
+
+function switchView(v){
+  currentView=v;
+  ['timer','log','summary'].forEach(x=>document.getElementById(`nav-${x}`).classList.toggle('active',x===v));
+  render();
+}
+
+function render(){
+  const total=totalSecs();
+  document.getElementById('header-date').textContent=new Date().toLocaleDateString('el-GR',{weekday:'long',month:'long',day:'numeric'});
+  const ht=document.getElementById('header-total');
+  if(ht)ht.textContent=total>0?`↑ ${fmtDur(total)} σήμερα`:'';
+  const content=document.getElementById('content');
+  if(currentView==='timer')renderTimer(content);
+  else if(currentView==='log')renderLog(content);
+  else renderSummary(content);
+}
+
+function renderTimer(root){
+  const lOpts=LAWYERS.map(l=>`<option value="${esc(l)}" ${fLawyer===l?'selected':''} >${esc(l)}</option>`).join('');
+  const pillarOpts=`<option value="">— Επιλογή Pillar —</option>`+ALL_PILLARS.map(p=>`<option value="${esc(p)}" ${fPillar===p?'selected':''} >${esc(p)}</option>`).join('');
+  const paAreas=fPillar?PILLARS[fPillar]||[]:ALL_PRACTICE_AREAS;
+  const paOpts=`<option value="">— Επιλογή Practice Area —</option>`+paAreas.map(a=>`<option value="${esc(a)}" ${fPracticeArea===a?'selected':''} >${esc(a)}</option>`).join('');
+  const catOpts=`<option value="">— Επιλογή —</option>`+CATEGORIES.map(c=>`<option value="${esc(c)}" ${fCategory===c?'selected':''} >${esc(c)}</option>`).join('');
+
+  root.innerHTML=`
+    <div class="clock-box ${running?'running':''}">
+      <div class="clock-display" id="clock">${fmt(elapsed)}</div>
+      <div class="clock-status">${running?'● καταγραφή ώρας':''}</div>
+    </div>
+    <div class="form-body">
+      <div class="field"><div class="field-label">Δικηγόρος</div><select id="f-lawyer" onchange="fLawyer=this.value">${lOpts}</select></div>
+      <div class="field"><div class="field-label">Πελάτης</div><input type="text" id="f-client" placeholder="Όνομα πελάτη" value="${esc(fClient)}" oninput="fClient=this.value"></div>
+      <div class="field"><div class="field-label">Υπόθεση</div><input type="text" id="f-case" placeholder="Αριθμός / τίτλος υπόθεσης" value="${esc(fCase)}" oninput="fCase=this.value"></div>
+      <div class="field"><div class="field-label">Τύπος</div>
+        <div class="radio-group">
+          <label class="radio-opt ${fType==='Δικαστική'?'active':''}" onclick="fType='Δικαστική';document.querySelectorAll('.radio-opt').forEach((el,i)=>el.classList.toggle('active',i===0))">
+            <span class="radio-dot"></span>Δικαστική</label>
+          <label class="radio-opt ${fType==='Συμβουλευτική'?'active':''}" onclick="fType='Συμβουλευτική';document.querySelectorAll('.radio-opt').forEach((el,i)=>el.classList.toggle('active',i===1))">
+            <span class="radio-dot"></span>Συμβουλευτική</label>
+        </div>
+      </div>
+      <div class="field"><div class="field-label">Ημερομηνία</div><input type="date" id="f-date" value="${fDate}" onchange="fDate=this.value"></div>
+      <div class="field"><div class="field-label">Pillar</div><select id="f-pillar" onchange="onPillarChange()">${pillarOpts}</select></div>
+      <div class="field"><div class="field-label">Practice Area</div><select id="f-pa" onchange="onPAChange()">${paOpts}</select></div>
+      <div class="field"><div class="field-label">Κατηγορία</div><select id="f-category" onchange="fCategory=this.value">${catOpts}</select></div>
+      <div class="field"><div class="field-label">Περιγραφή</div><textarea id="f-desc" placeholder="Περιγραφή εργασίας...">${esc(fDescription)}</textarea></div>
+    </div>
+    <div class="controls">
+      <button class="btn ${running?'btn-pause':'btn-start'}" id="timer-btn" onclick="toggleTimer()">${running?'⏸ Παύση':elapsed>0?'▶ Συνέχεια':'▶ Έναρξη'}</button>
+      <button class="btn btn-save" id="save-btn" onclick="saveEntry()" style="display:${elapsed>0&&!running?'':`none`}">✓ Αποθήκευση</button>
+      <button class="btn btn-reset" id="reset-btn" onclick="resetTimer()" style="display:${elapsed>0?'':`none`}">✕</button>
+    </div>
+  `;
+}
+
+function renderLog(root){
+  if(!entries.length){root.innerHTML=`<div class="empty">Δεν υπάρχουν καταχωρήσεις</div>`;return;}
+  const groups={};
+  entries.forEach(e=>{const d=e.date||todayStr();if(!groups[d])groups[d]=[];groups[d].push(e);});
+  let html='';
+  Object.keys(groups).sort().reverse().forEach(d=>{
+    const label=d===todayStr()?'Σήμερα':new Date(d+'T12:00:00').toLocaleDateString('el-GR',{weekday:'short',month:'short',day:'numeric'});
+    const dayTotal=groups[d].reduce((a,e)=>a+e.seconds,0);
+    html+=`<div class="group-header"><span>${label}</span><span>${fmtDur(dayTotal)}</span></div>`;
+    groups[d].forEach(e=>{
+      const main=[e.client,e.case].filter(Boolean).join(' · ')||'(χωρίς πελάτη)';
+      const sub=[e.lawyer,e.practiceArea,e.category].filter(Boolean).join(' · ');
+      html+=`<div class="entry"><div class="entry-body"><div class="entry-main">${esc(main)}</div><div class="entry-sub">${esc(sub)}</div></div><div class="entry-dur">${fmtDur(e.seconds)}</div><button class="del-btn" onclick="deleteEntry(${e.id})">×</button></div>`;
+    });
+  });
+  const total=totalSecs();
+  html+=`<div class="log-total"><span class="log-total-label">${entries.length} καταχωρήσεις</span><span class="log-total-val">${fmtDur(total)}</span></div>
+    <button class="export-btn" onclick="exportXLSX()">↓ Εξαγωγή σε xlsx</button>`;
+  root.innerHTML=html;
+}
+
+function renderSummary(root){
+  if(!entries.length){root.innerHTML=`<div class="empty">Δεν υπάρχουν δεδομένα</div>`;return;}
+  const total=totalSecs();
+  const mk=(map)=>Object.entries(map).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="sum-row"><span class="sum-key">${esc(k)}</span><span class="sum-val">${fmtDur(v)}</span></div>`).join('');
+  const bL={},bC={},bPA={},bPi={};
+  entries.forEach(e=>{
+    [[bL,e.lawyer||'—'],[bC,e.client||'—'],[bPA,e.practiceArea||'—'],[bPi,e.pillar||'—']].forEach(([m,k])=>m[k]=(m[k]||0)+e.seconds);
+  });
+  root.innerHTML=`
+    <div class="total-band">
+      <div><div class="total-band-label">Σύνολο χρόνου</div><div class="total-band-val">${fmtDur(total)}</div></div>
+      <div style="text-align:right"><div class="total-band-label">${entries.length} καταχωρήσεις</div></div>
+    </div>
+    <div class="sum-section"><div class="sum-title">Ανά Δικηγόρο</div>${mk(bL)}</div>
+    <div class="sum-section"><div class="sum-title">Ανά Πελάτη</div>${mk(bC)}</div>
+    <div class="sum-section"><div class="sum-title">Ανά Pillar</div>${mk(bPi)}</div>
+    <div class="sum-section"><div class="sum-title">Ανά Practice Area</div>${mk(bPA)}</div>
+    <div class="billable-box">
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.12em">Εκτίμηση χρέωσης</div>
+      <div class="bill-row">
+        <span style="font-size:11px;color:var(--muted)">@ €</span>
+        <input type="number" id="bill-rate" value="${billRate}" min="0" style="width:70px;border-bottom:1px solid var(--border)" oninput="billRate=this.value;updateBill()">
+        <span style="font-size:11px;color:var(--muted)">/ ώρα →</span>
+        <span class="bill-total" id="bill-total">€${((parseFloat(billRate)||0)*(total/3600)).toFixed(2)}</span>
+      </div>
+    </div>
+    <button class="export-btn" onclick="exportXLSX()">↓ Εξαγωγή σε xlsx</button>
+  `;
+}
+
+function updateBill(){const el=document.getElementById('bill-total');if(el)el.textContent=`€${((parseFloat(billRate)||0)*(totalSecs()/3600)).toFixed(2)}`;}
+
+loadData();render();
+setInterval(()=>{if(document.getElementById('header-date'))render();},60000);
+</script>
+
+</body></html>
