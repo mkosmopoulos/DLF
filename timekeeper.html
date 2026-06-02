@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Drakopoulos Time">
+<meta name="theme-color" content="#ffffff">
+<title>Drakopoulos Timekeeper</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&family=Cormorant+Garamond:wght@400;500&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f5f3; --header-bg: #1a1a1a;
+    --surface: #ffffff;
+    --border: #ddddd8;
+    --border2: #e8e8e4;
+    --text: #1a1a1a;
+    --muted: #888884;
+    --accent: #1a1a1a;
+    --accent2: #4a4a4a;
+    --red: #c0392b;
+    --green: #2c6e49;
+    --mono: 'Montserrat', sans-serif;
+  }
+  html, body { background: var(--bg); color: var(--text); font-family: var(--mono); height: 100%; overflow: hidden; font-size: 13px; }
+  #app { display: flex; flex-direction: column; height: 100dvh; max-width: 480px; margin: 0 auto; background: var(--bg); }
+
+  /* Header */
+  .header { background: #1a1a1a; border-bottom: none; padding: 14px 20px 10px; flex-shrink: 0; }
+  .logo-text-mark { font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 400; letter-spacing: 0.35em; color: #ffffff; margin-bottom: 5px; text-transform: uppercase; }
+  .header-sub { font-size: 9px; color: #666; letter-spacing: 0.15em; text-transform: uppercase; display: flex; align-items: center; gap: 10px; }
+  .header-total { color: #aaa; font-weight: 600; }
+
+  /* Nav */
+  .nav { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .nav-btn { flex: 1; padding: 10px 0; border: none; background: transparent; color: var(--muted); font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 500; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; -webkit-tap-highlight-color: transparent; }
+  .nav-btn.active { color: var(--text); border-bottom-color: var(--text); }
+
+  /* Content */
+  .content { flex: 1; overflow-y: auto; padding: 0 0 80px; -webkit-overflow-scrolling: touch; }
+  .content::-webkit-scrollbar { width: 3px; }
+  .content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+
+
+  /* Form */
+  .form-body { padding: 0 16px; }
+  .field { padding: 11px 0; border-bottom: 1px solid var(--border2); }
+  .field:last-of-type { border-bottom: none; }
+  .field-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; font-weight: 500; margin-bottom: 5px; }
+  input[type=text], input[type=date], input[type=number], select, textarea {
+    width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--border);
+    padding: 6px 2px; color: var(--text); font-family: var(--mono); font-size: 13px;
+    outline: none; -webkit-appearance: none; border-radius: 0;
+    transition: border-color 0.15s;
+  }
+  input:focus, select:focus, textarea:focus { border-bottom-color: var(--text); }
+  input::placeholder, textarea::placeholder { color: var(--border); }
+  select { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E") no-repeat right 4px center; padding-right: 20px; }
+  select option { background: #fff; color: #1a1a1a; }
+  textarea { resize: none; height: 64px; border: 1px solid var(--border); padding: 8px; border-radius: 2px; margin-top: 2px; font-size: 12px; }
+  textarea:focus { border-color: var(--text); }
+  input[type=date]::-webkit-calendar-picker-indicator { opacity: 0.4; }
+
+  /* Radio */
+  .radio-group { display: flex; gap: 20px; padding: 4px 0; }
+  .radio-opt { display: flex; align-items: center; gap: 7px; cursor: pointer; font-size: 12px; color: var(--muted); -webkit-tap-highlight-color: transparent; letter-spacing: 0.03em; }
+  .radio-dot { width: 15px; height: 15px; border-radius: 50%; border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: border-color 0.15s; }
+  .radio-opt.active .radio-dot { border-color: var(--text); }
+  .radio-dot::after { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--text); display: none; }
+  .radio-opt.active .radio-dot::after { display: block; }
+  .radio-opt.active { color: var(--text); }
+
+  /* Controls */
+  .controls { display: flex; gap: 8px; padding: 16px; background: var(--surface); border-top: 1px solid var(--border); position: sticky; bottom: 0; }
+  .btn { flex: 1; padding: 12px; border: 1.5px solid var(--text); border-radius: 0; font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; transition: all 0.15s; -webkit-tap-highlight-color: transparent; background: transparent; color: var(--text); }
+  .btn:active { opacity: 0.7; }
+  .btn-start { background: var(--text); color: #fff; border-color: var(--text); }
+  .btn-pause { background: #fff; color: var(--text); border-color: var(--text); }
+  .btn-save { background: var(--green); color: #fff; border-color: var(--green); }
+  .btn-reset { flex: 0; padding: 12px 14px; border-color: var(--border); color: var(--muted); }
+
+  /* Log */
+  .group-header { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.15em; padding: 14px 16px 6px; display: flex; justify-content: space-between; border-bottom: 1px solid var(--border2); }
+  .entry { display: flex; align-items: center; gap: 10px; padding: 11px 16px; background: var(--surface); border-bottom: 1px solid var(--border2); }
+  .entry-body { flex: 1; min-width: 0; }
+  .entry-main { font-size: 12px; color: var(--text); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+  .entry-sub { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .entry-dur { font-size: 13px; color: var(--accent2); white-space: nowrap; flex-shrink: 0; font-weight: 500; }
+  .del-btn { background: none; border: none; color: #ccc; font-size: 18px; cursor: pointer; padding: 4px; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
+  .del-btn:active { color: var(--red); }
+
+  .log-total { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: var(--surface); border-top: 2px solid var(--text); margin-top: 8px; }
+  .log-total-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+  .log-total-val { font-size: 18px; font-weight: 300; color: var(--text); font-family: 'Cormorant Garamond', serif; }
+
+  .export-btn { width: calc(100% - 32px); margin: 10px 16px; padding: 11px; background: transparent; color: var(--muted); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .export-btn:active { background: var(--border2); }
+
+  /* Summary */
+  .sum-section { background: var(--surface); border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+  .sum-title { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.15em; padding: 12px 16px 6px; border-bottom: 1px solid var(--border2); }
+  .sum-row { display: flex; justify-content: space-between; padding: 9px 16px; border-bottom: 1px solid var(--border2); font-size: 11px; }
+  .sum-row:last-child { border-bottom: none; }
+  .sum-key { color: var(--accent2); }
+  .sum-val { color: var(--text); font-weight: 500; }
+
+  .total-band { background: var(--text); color: #fff; padding: 20px 16px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+  .total-band-label { font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; opacity: 0.6; }
+  .total-band-val { font-size: 36px; font-weight: 300; font-family: 'Cormorant Garamond', serif; }
+
+  .billable-box { background: var(--surface); border-top: 1px solid var(--border); padding: 14px 16px; }
+  .bill-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+  .bill-total { font-size: 20px; color: var(--text); font-weight: 300; font-family: 'Cormorant Garamond', serif; }
+
+  .empty { text-align: center; padding: 60px 0; color: var(--border); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; }
+
+  /* Wheel picker */
+  .wheel-row { display:flex; align-items:center; justify-content:center; gap:10px; padding:8px 0; }
+  .wheel-wrap { display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .wheel-label { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; }
+  .wheel-sep { font-size:28px; font-weight:300; color:var(--muted); margin-top:14px; }
+  .wheel {
+    width: 80px; height: 160px; overflow: hidden; position: relative;
+    cursor: ns-resize; user-select: none; -webkit-user-select: none;
+  }
+  .wheel::before, .wheel::after {
+    content:''; position:absolute; left:0; right:0; height:56px; z-index:2; pointer-events:none;
+  }
+  .wheel::before { top:0; background:linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0)); }
+  .wheel::after  { bottom:0; background:linear-gradient(to top, rgba(255,255,255,0.95), rgba(255,255,255,0)); }
+  .wheel-selector {
+    position:absolute; left:6px; right:6px; top:50%; transform:translateY(-50%);
+    height:40px; border-top:1.5px solid #1a1a1a; border-bottom:1.5px solid #1a1a1a;
+    pointer-events:none; z-index:1;
+  }
+  .wheel-inner { position:absolute; width:100%; transition:transform 0.15s cubic-bezier(.25,.46,.45,.94); }
+  .wheel-item {
+    height:40px; display:flex; align-items:center; justify-content:center;
+    font-family:'Cormorant Garamond',serif; font-size:26px; font-weight:400;
+    color:#aaa; transition:color 0.1s, font-size 0.1s;
+  }
+  .wheel-item.selected { color:#1a1a1a; font-size:30px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="logo-text-mark">D R A K O P O U L O S</div>
+    <div class="header-sub">
+      <span id="header-date"></span>
+      <span class="header-total" id="header-total"></span>
+    </div>
+  </div>
+  <div class="nav">
+    <button class="nav-btn active" onclick="switchView('timer')" id="nav-timer">Entry</button>
+    <button class="nav-btn" onclick="switchView('log')" id="nav-log">Log</button>
+    <button class="nav-btn" onclick="switchView('summary')" id="nav-summary">Summary</button>
+  </div>
+  <div class="content" id="content"></div>
+</div>
+
+<script>
+const LAWYERS = [
+  'DRAKOPOULOS PANAGIOTIS','KOSMOPOULOS MICHALIS','LALAOUNI MIKA',
+  'ANAGNOSTOPOULOS GIANNIS','FRAGKISKOS PETROS','NIKOLAKOPOULOS KOSTAS',
+];
+const CATEGORIES = [
+  'ATTEND','CASE STUDY','CERTIFY','COMMUNICATION','COORDINATE','DRAFT','FILE',
+  'INVESTIGATION FOR COUNTERFEITS','MEETING','PREPARE','REVIEW','SEND','TRANSLATE',
+  'TRIP TO','VISIT',
+  'ΑΠΟΦΑΣΗ','ΔΙΚΑΣΙΜΟΣ','ΕΠΙΔΟΣΗ ΕΓΓΡΑΦΟΥ','ΕΠΙΚΟΙΝΩΝΙΑ','ΕΠΙΚΥΡΩΣΗ','ΕΠΙΜΕΛΕΙΑ',
+  'ΕΡΕΥΝΑ ΣΕ ΚΤΗΜΑΤΟΛΟΓΙΚΟ ΓΡΑΦΕΙΟ','ΕΡΕΥΝΑ ΣΕ ΥΠΟΘΗΚΟΦΥΛΑΚΕΙΟ',
+  'ΚΑΘΑΡΟΓΡΑΦΗ ΑΠΟΦΑΣΗΣ','ΚΑΤΑΘΕΣΗ','ΚΑΤΑΘΕΣΗ ΕΓΓΡΑΦΟΥ',
+  'ΚΑΤΑΘΕΣΗ ΕΓΓΡΑΦΩΝ - ΠΡΑΞΕΙΣ ΣΕ ΚΤΗΜΑΤΟΛΟΓΙΚΟ ΓΡΑΦΕΙΟ',
+  'ΚΑΤΑΘΕΣΗ ΦΑΚΕΛΟΥ ΣΕ ΓΡΑΦΕΙΟ ΚΤΗΜΑΤΟΓΡΑΦΗΣΗΣ',
+  'ΜΕΛΕΤΗ ΥΠΟΘΕΣΗΣ','ΜΕΤΑΓΡΑΦΗ ΠΡΑΞΕΩΝ ΣΕ ΥΠΟΘΗΚΟΦΥΛΑΚΕΙΟ','ΜΕΤΑΦΡΑΣΗ',
+  'ΠΑΡΑΛΑΒΗ','ΠΑΡΑΛΑΒΗ ΕΓΓΡΑΦΟΥ','ΠΑΡΑΛΑΒΗ ΕΚΘΕΣΗΣ ΕΠΙΔΟΣΗΣ',
+  'ΠΑΡΑΣΤΑΣΗ','ΠΑΡΑΣΤΑΣΗ ΣΕ ΣΥΜΒΟΛΑΙΟΓΡΑΦΟ','ΠΑΡΑΣΤΑΣΗ ΣΤΟ ΔΙΚΑΣΤΗΡΙΟ',
+  'ΠΟΡΕΙΑ ΜΗΝΥΣΗΣ','ΠΡΟΕΤΟΙΜΑΣΙΑ','ΣΥΝΑΝΤΗΣΗ','ΣΥΝΤΑΞΗ ΕΓΓΡΑΦΟΥ',
+];
+const PILLARS = {
+  'CORPORATE': ['CORPORATE & COMMERCIAL','EMPLOYMENT','BANKING & FINANCE','M&A'],
+  'DISPUTE RESOLUTION': ['DISPUTE RESOLUTION'],
+  'IP': ['IP','ANTICOUNTERFEITING'],
+  'REAL ESTATE': ['REAL ESTATE','REAL ESTATE PORTFOLIOS'],
+  'REGULATORY': ['IMMIGRATION','GDPR','REGULATORY','ADMINISTRATIVE - PP'],
+  'TECHNOLOGY': ['TECHNOLOGY'],
+  'PRIVATE CLIENTS': ['PRIVATE CLIENTS'],
+  'CROSS-BORDER': ['CROSS-BORDER'],
+};
+const PA_TO_PILLAR = {};
+Object.entries(PILLARS).forEach(([p,areas]) => areas.forEach(a => PA_TO_PILLAR[a]=p));
+const ALL_PRACTICE_AREAS = Object.keys(PA_TO_PILLAR).sort();
+const ALL_PILLARS = Object.keys(PILLARS).sort();
+
+let entries = [];
+let currentView = 'timer', billRate = '150';
+let fLawyer='KOSMOPOULOS MICHALIS',fClient='',fCase='';
+let fDate=todayStr(),fCategory='',fPillar='',fPracticeArea='',fDescription='';
+let fManualHrs='',fManualMins='';
+
+function loadData(){try{const s=localStorage.getItem('drako_v1');if(s)entries=JSON.parse(s);}catch(e){}}
+function saveData(){localStorage.setItem('drako_v1',JSON.stringify(entries));}
+function fmtDur(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60);if(h===0)return `${m}m`;if(m===0)return `${h}h`;return `${h}h ${m}min`;}
+function totalSecs(){return entries.reduce((a,e)=>a+e.seconds,0);}
+function todayStr(){return new Date().toISOString().slice(0,10);}
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+
+function saveEntry(){
+  syncFields();
+  const secs = (parseInt(fManualHrs)||0)*3600 + (parseInt(fManualMins)||0)*60;
+  if(secs===0) return;
+  entries.unshift({id:Date.now(),lawyer:fLawyer,client:fClient,case:fCase,
+    date:fDate,pillar:fPillar,practiceArea:fPracticeArea,category:fCategory,
+    description:fDescription,seconds:secs,
+    time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})});
+  saveData();
+  fClient='';fCase='';fCategory='';fPillar='';fPracticeArea='';fDescription='';
+  fManualHrs='0';fManualMins='0';
+  render();
+}
+
+function syncFields(){
+  const g=id=>{const el=document.getElementById(id);return el?el.value:'';};
+  fLawyer=g('f-lawyer');fClient=g('f-client');fCase=g('f-case');
+  fDate=g('f-date');fPillar=g('f-pillar');fPracticeArea=g('f-pa');
+  fCategory=g('f-category');fDescription=g('f-desc');
+}
+
+function deleteEntry(id){entries=entries.filter(e=>e.id!==id);saveData();render();}
+
+function onPillarChange(){
+  const p=document.getElementById('f-pillar').value;fPillar=p;
+  const pa=document.getElementById('f-pa');
+  const areas=p?PILLARS[p]||[]:ALL_PRACTICE_AREAS;
+  pa.innerHTML=`<option value="">— Select —</option>`+areas.map(a=>`<option value="${esc(a)}">${esc(a)}</option>`).join('');
+  fPracticeArea='';
+}
+function onPAChange(){
+  const a=document.getElementById('f-pa').value;fPracticeArea=a;
+  if(a&&PA_TO_PILLAR[a]){fPillar=PA_TO_PILLAR[a];document.getElementById('f-pillar').value=fPillar;}
+}
+function onCategoryChange(){
+  const cat=document.getElementById('f-category').value;
+  fCategory=cat;
+  const desc=document.getElementById('f-desc');
+  if(desc){
+    if(cat){
+      desc.disabled=false;
+      desc.style.opacity='1';
+      desc.style.cursor='text';
+      desc.placeholder='Description of work...';
+      if(!desc.value.startsWith(cat)){
+        desc.value=cat+(desc.value?'\n'+desc.value:'');
+        fDescription=desc.value;
+      }
+    } else {
+      desc.disabled=true;
+      desc.style.opacity='0.4';
+      desc.style.cursor='not-allowed';
+      desc.placeholder='Select a category first...';
+    }
+  }
+  validateForm();
+}
+
+function validateForm(){
+  const g=id=>{const el=document.getElementById(id);return el?el.value.trim():'';};
+  const hrs=parseInt(fManualHrs)||0;
+  const mins=parseInt(fManualMins)||0;
+  const valid = g('f-lawyer') && g('f-client') && g('f-case') &&
+                g('f-pillar') && g('f-pa') && g('f-category') &&
+                (hrs>0||mins>0);
+  const btn=document.getElementById('save-btn');
+  if(btn){
+    btn.style.opacity = valid?'1':'0.3';
+    btn.style.pointerEvents = valid?'auto':'none';
+  }
+}
+
+function exportXLSX(){
+  if(!entries.length)return;
+  const wb=XLSX.utils.book_new();
+  const rows=[['Date','Time','Lawyer','Client','Case','Pillar','Practice Area','Category','Hours','Minutes','Duration','Description']];
+  entries.forEach(e=>rows.push([e.date||todayStr(),e.time,e.lawyer||'',e.client||'',e.case||'',e.pillar||'',e.practiceArea||'',e.category||'',+(e.seconds/3600).toFixed(2),Math.round(e.seconds/60),fmtDur(e.seconds),e.description||'']));
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:12},{wch:7},{wch:24},{wch:20},{wch:20},{wch:14},{wch:18},{wch:26},{wch:22},{wch:7},{wch:7},{wch:10},{wch:30}];
+  XLSX.utils.book_append_sheet(wb,ws,'Time Log');
+  const mk=(map,cols)=>{const ws=XLSX.utils.aoa_to_sheet([cols,...Object.entries(map).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,+(v/3600).toFixed(2)])]);ws['!cols']=cols.map((_,i)=>({wch:i===0?26:10}));return ws;};
+  const bL={},bC={},bPA={},bPi={};
+  entries.forEach(e=>{
+    [[ bL,e.lawyer||'—'],[bC,e.client||'—'],[bPA,e.practiceArea||'—'],[bPi,e.pillar||'—']].forEach(([m,k])=>m[k]=(m[k]||0)+e.seconds);
+  });
+  XLSX.utils.book_append_sheet(wb,mk(bL,['Lawyer','Hours']),'By Lawyer');
+  XLSX.utils.book_append_sheet(wb,mk(bC,['Client','Hours']),'By Client');
+  XLSX.utils.book_append_sheet(wb,mk(bPi,['Pillar','Hours']),'By Pillar');
+  XLSX.utils.book_append_sheet(wb,mk(bPA,['Practice Area','Hours']),'By Practice Area');
+  XLSX.writeFile(wb,`drakopoulos_timesheet_${todayStr()}.xlsx`);
+}
+
+function switchView(v){
+  currentView=v;
+  ['timer','log','summary'].forEach(x=>document.getElementById(`nav-${x}`).classList.toggle('active',x===v));
+  render();
+}
+
+function render(){
+  const total=totalSecs();
+  document.getElementById('header-date').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',month:'long',day:'numeric'});
+  const ht=document.getElementById('header-total');
+  if(ht)ht.textContent=total>0?`↑ ${fmtDur(total)} logged`:'`';
+  const content=document.getElementById('content');
+  if(currentView==='timer')renderTimer(content);
+  else if(currentView==='log')renderLog(content);
+  else renderSummary(content);
+}
+
+function renderTimer(root){
+  const lOpts=LAWYERS.map(l=>`<option value="${esc(l)}" ${fLawyer===l?'selected':''} >${esc(l)}</option>`).join('');
+  const pillarOpts=`<option value="">— Select —</option>`+ALL_PILLARS.map(p=>`<option value="${esc(p)}" ${fPillar===p?'selected':''} >${esc(p)}</option>`).join('');
+  const paAreas=fPillar?PILLARS[fPillar]||[]:ALL_PRACTICE_AREAS;
+  const paOpts=`<option value="">— Select —</option>`+paAreas.map(a=>`<option value="${esc(a)}" ${fPracticeArea===a?'selected':''} >${esc(a)}</option>`).join('');
+  const catOpts=`<option value="">— Select —</option>`+CATEGORIES.map(c=>`<option value="${esc(c)}" ${fCategory===c?'selected':''} >${esc(c)}</option>`).join('');
+
+  root.innerHTML=`
+
+    <div class="form-body">
+      <div class="field"><div class="field-label">Lawyer</div><select id="f-lawyer" onchange="fLawyer=this.value;validateForm()">${lOpts}</select></div>
+      <div class="field"><div class="field-label">Client</div><input type="text" id="f-client" placeholder="Client name" value="${esc(fClient)}" oninput="fClient=this.value;validateForm()"></div>
+      <div class="field"><div class="field-label">Case</div><input type="text" id="f-case" placeholder="Case number / title" value="${esc(fCase)}" oninput="fCase=this.value;validateForm()"></div>
+
+      <div class="field"><div class="field-label">Date</div><input type="date" id="f-date" value="${fDate}" onchange="fDate=this.value"></div>
+      <div class="field"><div class="field-label">Pillar</div><select id="f-pillar" onchange="onPillarChange();validateForm()">${pillarOpts}</select></div>
+      <div class="field"><div class="field-label">Practice Area</div><select id="f-pa" onchange="onPAChange();validateForm()">${paOpts}</select></div>
+      <div class="field"><div class="field-label">Category</div><select id="f-category" onchange="onCategoryChange()">${catOpts}</select></div>
+      <div class="field"><div class="field-label">Description</div><textarea id="f-desc" placeholder="Select a category first..." oninput="fDescription=this.value" ${!fCategory?'disabled style="opacity:0.4;cursor:not-allowed"':'placeholder="Description of work..."'}>${esc(fDescription)}</textarea></div>
+      <div class="field"><div class="field-label">Time</div>
+        <div class="wheel-row">
+          <div class="wheel-wrap">
+            <div class="wheel-label">hours</div>
+            <div class="wheel" id="wheel-hrs" data-type="hrs"></div>
+          </div>
+          <div class="wheel-sep">:</div>
+          <div class="wheel-wrap">
+            <div class="wheel-label">minutes</div>
+            <div class="wheel" id="wheel-mins" data-type="mins"></div>
+          </div>
+        </div>
+        <div style="text-align:center;font-size:11px;color:var(--muted);margin-top:6px" id="wheel-display"></div>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="btn btn-save" id="save-btn" onclick="saveEntry()" style="opacity:0.3;pointer-events:none">✓ Save</button>
+    </div>
+  `;
+  // Init wheels after DOM is set
+  setTimeout(()=>{initWheels();validateForm();},0);
+}
+
+function renderLog(root){
+  if(!entries.length){root.innerHTML=`<div class="empty">No entries yet</div>`;return;}
+  const groups={};
+  entries.forEach(e=>{const d=e.date||todayStr();if(!groups[d])groups[d]=[];groups[d].push(e);});
+  let html='';
+  Object.keys(groups).sort().reverse().forEach(d=>{
+    const label=d===todayStr()?'Today':new Date(d+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',month:'short',day:'numeric'});
+    const dayTotal=groups[d].reduce((a,e)=>a+e.seconds,0);
+    html+=`<div class="group-header"><span>${label}</span><span>${fmtDur(dayTotal)}</span></div>`;
+    groups[d].forEach(e=>{
+      const main=[e.client,e.case].filter(Boolean).join(' · ')||'(no client)';
+      const sub=[e.lawyer,e.practiceArea,e.category].filter(Boolean).join(' · ');
+      html+=`<div class="entry"><div class="entry-body"><div class="entry-main">${esc(main)}</div><div class="entry-sub">${esc(sub)}</div></div><div class="entry-dur">${fmtDur(e.seconds)}</div><button class="del-btn" onclick="deleteEntry(${e.id})">×</button></div>`;
+    });
+  });
+  const total=totalSecs();
+  html+=`<div class="log-total"><span class="log-total-label">${entries.length} entries</span><span class="log-total-val">${fmtDur(total)}</span></div>
+    <button class="export-btn" onclick="exportXLSX()">↓ Export to xlsx</button>`;
+  root.innerHTML=html;
+}
+
+function renderSummary(root){
+  if(!entries.length){root.innerHTML=`<div class="empty">No data yet</div>`;return;}
+  const total=totalSecs();
+  const mk=(map)=>Object.entries(map).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="sum-row"><span class="sum-key">${esc(k)}</span><span class="sum-val">${fmtDur(v)}</span></div>`).join('');
+  const bL={},bC={},bPA={},bPi={};
+  entries.forEach(e=>{
+    [[bL,e.lawyer||'—'],[bC,e.client||'—'],[bPA,e.practiceArea||'—'],[bPi,e.pillar||'—']].forEach(([m,k])=>m[k]=(m[k]||0)+e.seconds);
+  });
+  root.innerHTML=`
+    <div class="total-band">
+      <div><div class="total-band-label">Total time</div><div class="total-band-val">${fmtDur(total)}</div></div>
+      <div style="text-align:right"><div class="total-band-label">${entries.length} entries</div></div>
+    </div>
+    <div class="sum-section"><div class="sum-title">By Lawyer</div>${mk(bL)}</div>
+    <div class="sum-section"><div class="sum-title">By Client</div>${mk(bC)}</div>
+    <div class="sum-section"><div class="sum-title">By Pillar</div>${mk(bPi)}</div>
+    <div class="sum-section"><div class="sum-title">By Practice Area</div>${mk(bPA)}</div>
+    <div class="billable-box">
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.12em">Billable estimate</div>
+      <div class="bill-row">
+        <span style="font-size:11px;color:var(--muted)">@ €</span>
+        <input type="number" id="bill-rate" value="${billRate}" min="0" style="width:70px;border-bottom:1px solid var(--border)" oninput="billRate=this.value;updateBill()">
+        <span style="font-size:11px;color:var(--muted)">/ hour →</span>
+        <span class="bill-total" id="bill-total">€${((parseFloat(billRate)||0)*(total/3600)).toFixed(2)}</span>
+      </div>
+    </div>
+    <button class="export-btn" onclick="exportXLSX()">↓ Export to xlsx</button>
+  `;
+}
+
+function updateBill(){const el=document.getElementById('bill-total');if(el)el.textContent=`€${((parseFloat(billRate)||0)*(totalSecs()/3600)).toFixed(2)}`;}
+
+
+// ── Wheel Picker ──────────────────────────────────────────
+const ITEM_H = 40;
+const wheels = {}; // { hrs: {el, inner, index, items}, mins: {...} }
+
+function initWheels(){
+  initWheel('wheel-hrs', Array.from({length:25},(_,i)=>String(i).padStart(2,'0')), 0);
+  initWheel('wheel-mins', Array.from({length:60},(_,i)=>String(i).padStart(2,'0')), 0);
+}
+
+function initWheel(id, items, startIndex){
+  const el = document.getElementById(id);
+  if(!el) return;
+  const type = el.dataset.type;
+
+  // Build inner
+  el.innerHTML = '<div class="wheel-selector"></div><div class="wheel-inner"></div>';
+  const inner = el.querySelector('.wheel-inner');
+
+  // Pad top/bottom so selected item is centred
+  const pad = 2;
+  const allItems = [...Array(pad).fill(''), ...items, ...Array(pad).fill('')];
+  allItems.forEach((val, i) => {
+    const div = document.createElement('div');
+    div.className = 'wheel-item';
+    div.textContent = val;
+    inner.appendChild(div);
+  });
+
+  const state = { el, inner, items, allItems, index: startIndex, pad, dragging:false, startY:0, startOffset:0 };
+  wheels[type] = state;
+  setWheelIndex(type, startIndex, false);
+  updateWheelDisplay();
+
+  // Touch
+  el.addEventListener('touchstart', e=>{ e.preventDefault(); wheelDragStart(type, e.touches[0].clientY); }, {passive:false});
+  el.addEventListener('touchmove',  e=>{ e.preventDefault(); wheelDragMove(type, e.touches[0].clientY); }, {passive:false});
+  el.addEventListener('touchend',   e=>{ wheelDragEnd(type); });
+
+  // Mouse
+  el.addEventListener('mousedown', e=>{ wheelDragStart(type, e.clientY); });
+  window.addEventListener('mousemove', e=>{ if(wheels[type]&&wheels[type].dragging) wheelDragMove(type, e.clientY); });
+  window.addEventListener('mouseup',   e=>{ if(wheels[type]&&wheels[type].dragging) wheelDragEnd(type); });
+}
+
+function setWheelIndex(type, idx, animate=true){
+  const s = wheels[type];
+  if(!s) return;
+  idx = Math.max(0, Math.min(s.items.length-1, idx));
+  s.index = idx;
+  const offset = -(idx + s.pad) * ITEM_H + (160/2) - (ITEM_H/2);
+  if(!animate) s.inner.style.transition='none'; else s.inner.style.transition='transform 0.18s cubic-bezier(.25,.46,.45,.94)';
+  s.inner.style.transform = `translateY(${offset}px)`;
+  // Highlight
+  s.inner.querySelectorAll('.wheel-item').forEach((el,i)=>{
+    el.classList.toggle('selected', i === idx + s.pad);
+  });
+  // Update state vars
+  if(type==='hrs') fManualHrs = String(idx);
+  if(type==='mins') fManualMins = String(idx);
+  updateWheelDisplay();
+}
+
+function wheelDragStart(type, y){
+  const s=wheels[type]; if(!s) return;
+  s.dragging=true; s.startY=y;
+  const m = s.inner.style.transform.match(/translateY\(([^p]+)px\)/);
+  s.startOffset = m ? parseFloat(m[1]) : 0;
+  s.inner.style.transition='none';
+}
+
+function wheelDragMove(type, y){
+  const s=wheels[type]; if(!s||!s.dragging) return;
+  const dy = y - s.startY;
+  const offset = s.startOffset + dy;
+  s.inner.style.transform=`translateY(${offset}px)`;
+  // Preview which item is selected
+  const idx = Math.round((160/2 - ITEM_H/2 - offset) / ITEM_H) - s.pad;
+  const clamped = Math.max(0, Math.min(s.items.length-1, idx));
+  s.inner.querySelectorAll('.wheel-item').forEach((el,i)=>{
+    el.classList.toggle('selected', i === clamped + s.pad);
+  });
+}
+
+function wheelDragEnd(type){
+  const s=wheels[type]; if(!s||!s.dragging) return;
+  s.dragging=false;
+  const m = s.inner.style.transform.match(/translateY\(([^p]+)px\)/);
+  const offset = m ? parseFloat(m[1]) : 0;
+  const idx = Math.round((160/2 - ITEM_H/2 - offset) / ITEM_H) - s.pad;
+  setWheelIndex(type, idx);
+  // Show save button if time selected
+  const saveBtn = document.getElementById('save-btn');
+  validateForm();
+}
+
+function updateWheelDisplay(){
+  const el = document.getElementById('wheel-display');
+  if(!el) return;
+  const h = parseInt(fManualHrs)||0;
+  const m = parseInt(fManualMins)||0;
+  if(h===0&&m===0){ el.textContent=''; return; }
+  el.textContent = (h>0?`${h} h '`:'') + (m>0?`${m} min`:'');
+}
+// ─────────────────────────────────────────────────────────
+
+loadData();render();
+setInterval(()=>{if(document.getElementById('header-date'))render();},60000);
+</script>
+</body>
+</html>
